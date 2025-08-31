@@ -11,8 +11,8 @@ import {
 import { usePlaygroundStore } from '@/store'
 import { useQueryState } from 'nuqs'
 import Icon from '@/components/ui/icon'
-import { useEffect } from 'react'
 import useChatActions from '@/hooks/useChatActions'
+import { useDynamicAgents } from '@/hooks/useDynamicAgents'
 
 export function EntitySelector() {
   const {
@@ -25,6 +25,7 @@ export function EntitySelector() {
     setSelectedTeamId
   } = usePlaygroundStore()
   const { focusChatInput } = useChatActions()
+  const { dynamicAgents } = useDynamicAgents()
   const [agentId, setAgentId] = useQueryState('agent', {
     parse: (value) => value || undefined,
     history: 'push'
@@ -35,26 +36,13 @@ export function EntitySelector() {
   })
   const [, setSessionId] = useQueryState('session')
 
-  const currentEntities = mode === 'team' ? teams : agents
+  // Combine playground agents with dynamic agents
+  const allAgents = [...agents, ...dynamicAgents]
+  const currentEntities = mode === 'team' ? teams : allAgents
   const currentValue = mode === 'team' ? teamId : agentId
   const placeholder = mode === 'team' ? 'Select Team' : 'Select Agent'
 
-  useEffect(() => {
-    if (currentValue && currentEntities.length > 0) {
-      const entity = currentEntities.find((item) => item.value === currentValue)
-      if (entity) {
-        setSelectedModel(entity.model.provider || '')
-        setHasStorage(!!entity.storage)
-        if (mode === 'team') {
-          setSelectedTeamId(entity.value)
-        }
-        if (entity.model.provider) {
-          focusChatInput()
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentValue, currentEntities, setSelectedModel, mode])
+
 
   const handleOnValueChange = (value: string) => {
     const newValue = value === currentValue ? null : value
@@ -110,7 +98,14 @@ export function EntitySelector() {
           >
             <div className="flex items-center gap-3 text-xs font-medium uppercase">
               <Icon type={'user'} size="xs" />
-              {entity.label}
+              <div className="flex flex-col">
+                <span>{entity.label}</span>
+                {(entity as any).type === 'dynamic' && (
+                  <span className="text-xs text-muted-foreground lowercase">
+                    {(entity as any).specialization || 'Dynamic Agent'}
+                  </span>
+                )}
+              </div>
             </div>
           </SelectItem>
         ))}

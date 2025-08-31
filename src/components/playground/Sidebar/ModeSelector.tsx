@@ -9,8 +9,6 @@ import {
   SelectItem
 } from '@/components/ui/select'
 import { usePlaygroundStore } from '@/store'
-import { useQueryState } from 'nuqs'
-import useChatActions from '@/hooks/useChatActions'
 
 export function ModeSelector() {
   const {
@@ -18,43 +16,18 @@ export function ModeSelector() {
     setMode,
     teams,
     agents,
-    setMessages,
-    setSelectedModel,
-    setHasStorage,
-    setSelectedTeamId
+    dynamicAgents
   } = usePlaygroundStore()
-  const { clearChat } = useChatActions()
-  const [, setAgentId] = useQueryState('agent')
-  const [, setTeamId] = useQueryState('team')
-  const [, setSessionId] = useQueryState('session')
 
   const hasTeams = teams.length > 0
-  const hasAgents = agents.length > 0
-  const isDropdownDisabled = !(hasTeams && hasAgents)
+  const hasAgents = agents.length > 0 || dynamicAgents.length > 0
 
   const handleModeChange = (newMode: 'agent' | 'team') => {
     if (newMode === mode) return
-
     setMode(newMode)
-
-    setAgentId(null)
-    setTeamId(null)
-    setSelectedTeamId(null)
-    setSelectedModel('')
-    setHasStorage(false)
-    setMessages([])
-    setSessionId(null)
-    clearChat()
   }
 
-  React.useEffect(() => {
-    if (!hasTeams && hasAgents && mode === 'team') {
-      setMode('agent')
-    } else if (!hasAgents && hasTeams && mode === 'agent') {
-      setMode('team')
-    }
-  }, [hasTeams, hasAgents, mode, setMode])
-
+  // Se não há agentes nem teams, desabilitar
   if (!hasTeams && !hasAgents) {
     return (
       <Select disabled>
@@ -69,7 +42,6 @@ export function ModeSelector() {
     <Select
       value={mode}
       onValueChange={(value) => handleModeChange(value as 'agent' | 'team')}
-      disabled={isDropdownDisabled}
     >
       <SelectTrigger className="h-9 w-full rounded-xl border border-primary/15 bg-primaryAccent text-xs font-medium uppercase">
         <SelectValue />

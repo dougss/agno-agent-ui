@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import { DM_Mono, Geist } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { Toaster } from '@/components/ui/sonner'
+import Header from '@/components/layout/Header'
 import './globals.css'
+
 const geistSans = Geist({
   variable: '--font-geist-sans',
   weight: '400',
@@ -16,9 +18,9 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Agent UI',
+  title: 'Agno AI Suite',
   description:
-    'A modern chat interface for AI agents built with Next.js, Tailwind CSS, and TypeScript. This template provides a ready-to-use UI for interacting with Agno agents.'
+    'A modern multi-agent system interface built with Next.js, Tailwind CSS, and TypeScript. This template provides a ready-to-use UI for interacting with Agno agents.'
 }
 
 export default function RootLayout({
@@ -29,7 +31,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${dmMono.variable} antialiased`}>
-        <NuqsAdapter>{children}</NuqsAdapter>
+        <NuqsAdapter>
+          <div className="min-h-screen bg-background">
+            <Header />
+            <main className="flex-1">
+              {children}
+            </main>
+          </div>
+        </NuqsAdapter>
         <Toaster />
       </body>
     </html>

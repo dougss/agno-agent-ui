@@ -14,6 +14,7 @@ import useAIResponseStream from './useAIResponseStream'
 import { ToolCall } from '@/types/playground'
 import { useQueryState } from 'nuqs'
 import { getJsonMarkdown } from '@/lib/utils'
+import { dynamicAgentChatAPI } from '@/api/playground'
 
 const useAIChatStreamHandler = () => {
   const setMessages = usePlaygroundStore((state) => state.setMessages)
@@ -30,6 +31,7 @@ const useAIChatStreamHandler = () => {
   const setSessionsData = usePlaygroundStore((state) => state.setSessionsData)
   const hasStorage = usePlaygroundStore((state) => state.hasStorage)
   const { streamResponse } = useAIResponseStream()
+  const dynamicAgents = usePlaygroundStore((state) => state.dynamicAgents)
 
   const updateMessagesWithErrorState = useCallback(() => {
     setMessages((prevMessages) => {
@@ -147,14 +149,22 @@ const useAIChatStreamHandler = () => {
         const endpointUrl = constructEndpointUrl(selectedEndpoint)
 
         let playgroundRunUrl: string | null = null
+        let isDynamicAgent = false
 
         if (mode === 'team' && teamId) {
           playgroundRunUrl = APIRoutes.TeamRun(endpointUrl, teamId)
         } else if (mode === 'agent' && agentId) {
-          playgroundRunUrl = APIRoutes.AgentRun(endpointUrl).replace(
-            '{agent_id}',
-            agentId
-          )
+          // Check if this is a dynamic agent
+          const dynamicAgent = dynamicAgents.find(agent => agent.value === agentId)
+          if (dynamicAgent) {
+            playgroundRunUrl = APIRoutes.DynamicAgentChat(endpointUrl, agentId)
+            isDynamicAgent = true
+          } else {
+            playgroundRunUrl = APIRoutes.AgentRun(endpointUrl).replace(
+              '{agent_id}',
+              agentId
+            )
+          }
         }
 
         if (!playgroundRunUrl) {
@@ -166,6 +176,92 @@ const useAIChatStreamHandler = () => {
 
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
+
+        // For dynamic agents, we need to handle the response differently
+        if (isDynamicAgent) {
+          try {
+            const response = await dynamicAgentChatAPI(
+              endpointUrl,
+              agentId!,
+              formData.get('message') as string,
+              undefined,
+              sessionId || undefined,
+              true
+            )
+            
+            if (response instanceof Response) {
+              // Handle streaming response for dynamic agents
+              const reader = response.body?.getReader()
+              const decoder = new TextDecoder()
+              
+              if (reader) {
+                while (true) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  
+                  const chunk = decoder.decode(value, { stream: true })
+                  
+                  // Parse the chunk as JSON events (similar to regular agents)
+                  const lines = chunk.split('\n')
+                  for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                      try {
+                        const eventData = JSON.parse(line.slice(6))
+                        
+                        if (eventData.event === 'RunStarted') {
+                          // Handle session creation
+                          const newSessionId = eventData.session_id as string
+                          setSessionId(newSessionId)
+                          
+                          if (hasStorage && (!sessionId || sessionId !== newSessionId)) {
+                            const sessionData = {
+                              session_id: newSessionId,
+                              title: formData.get('message') as string,
+                              created_at: eventData.created_at
+                            }
+                            setSessionsData((prevSessionsData) => {
+                              const sessionExists = prevSessionsData?.some(
+                                (session) => session.session_id === newSessionId
+                              )
+                              if (sessionExists) {
+                                return prevSessionsData
+                              }
+                              return [sessionData, ...(prevSessionsData ?? [])]
+                            })
+                          }
+                        } else if (eventData.event === 'RunResponseContent') {
+                          // Handle content streaming
+                          setMessages((prevMessages) => {
+                            const newMessages = [...prevMessages]
+                            const lastMessage = newMessages[newMessages.length - 1]
+                            if (lastMessage && lastMessage.role === 'agent') {
+                              lastMessage.content += eventData.content
+                            }
+                            return newMessages
+                          })
+                        } else if (eventData.event === 'RunCompleted') {
+                          // Handle completion
+                          setIsStreaming(false)
+                        }
+                      } catch (parseError) {
+                        console.warn('Failed to parse streaming event:', line)
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            updateMessagesWithErrorState()
+            setStreamingErrorMessage(
+              error instanceof Error ? error.message : String(error)
+            )
+          } finally {
+            focusChatInput()
+            setIsStreaming(false)
+          }
+          return
+        }
 
         await streamResponse({
           apiUrl: playgroundRunUrl,

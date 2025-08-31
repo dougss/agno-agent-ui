@@ -3,7 +3,7 @@ import { SessionEntry } from '@/types/playground'
 import { Button } from '../../../ui/button'
 import useSessionLoader from '@/hooks/useSessionLoader'
 import {
-  deletePlaygroundSessionAPI,
+  deleteAgentSessionAPI,
   deletePlaygroundTeamSessionAPI
 } from '@/api/playground'
 import { usePlaygroundStore } from '@/store'
@@ -63,7 +63,7 @@ const SessionItem = ({
           session_id
         )
       } else if (mode === 'agent' && agentId) {
-        response = await deletePlaygroundSessionAPI(
+        response = await deleteAgentSessionAPI(
           selectedEndpoint,
           agentId,
           session_id

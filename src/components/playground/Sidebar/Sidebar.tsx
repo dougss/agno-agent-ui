@@ -14,6 +14,8 @@ import { toast } from 'sonner'
 import { useQueryState } from 'nuqs'
 import { truncateText } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Bot, Sparkles } from 'lucide-react'
+import { DebugInfo } from './DebugInfo'
 
 const ENDPOINT_PLACEHOLDER = 'NO ENDPOINT ADDED'
 const SidebarHeader = () => (
@@ -38,6 +40,25 @@ const NewChatButton = ({
   >
     <Icon type="plus-icon" size="xs" className="text-background" />
     <span className="uppercase">New Chat</span>
+  </Button>
+)
+
+const AgentBuilderButton = ({
+  disabled,
+  onClick
+}: {
+  disabled: boolean
+  onClick: () => void
+}) => (
+  <Button
+    onClick={onClick}
+    disabled={disabled}
+    size="lg"
+    variant="outline"
+    className="h-9 w-full rounded-xl border-primary/15 text-xs font-medium text-primary hover:bg-primary/10"
+  >
+    <Sparkles className="h-4 w-4 mr-2" />
+    <span className="uppercase">Agent Builder</span>
   </Button>
 )
 
@@ -209,7 +230,9 @@ const Sidebar = () => {
     isEndpointActive,
     selectedModel,
     hydrated,
-    isEndpointLoading
+    isEndpointLoading,
+    agentBuilderMode,
+    setAgentBuilderMode
   } = usePlaygroundStore()
   const [isMounted, setIsMounted] = useState(false)
   const [agentId] = useQueryState('agent')
@@ -223,6 +246,12 @@ const Sidebar = () => {
   const handleNewChat = () => {
     clearChat()
     focusChatInput()
+    setAgentBuilderMode(false)
+  }
+
+  const handleAgentBuilder = () => {
+    setAgentBuilderMode(true)
+    clearChat()
   }
 
   return (
@@ -255,10 +284,16 @@ const Sidebar = () => {
         }}
       >
         <SidebarHeader />
-        <NewChatButton
-          disabled={messages.length === 0}
-          onClick={handleNewChat}
-        />
+        <div className="flex flex-col gap-2">
+          <NewChatButton
+            disabled={messages.length === 0}
+            onClick={handleNewChat}
+          />
+          <AgentBuilderButton
+            disabled={!isEndpointActive}
+            onClick={handleAgentBuilder}
+          />
+        </div>
         {isMounted && (
           <>
             <Endpoint />
@@ -293,6 +328,7 @@ const Sidebar = () => {
                   )}
                 </motion.div>
                 <Sessions />
+                <DebugInfo />
               </>
             )}
           </>

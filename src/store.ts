@@ -13,6 +13,9 @@ interface Agent {
     provider: string
   }
   storage?: boolean
+  type?: 'playground' | 'dynamic'
+  specialization?: string
+  description?: string
 }
 
 export interface Team {
@@ -74,6 +77,12 @@ interface PlaygroundStore {
   ) => void
   isSessionsLoading: boolean
   setIsSessionsLoading: (isSessionsLoading: boolean) => void
+  dynamicAgents: Agent[]
+  setDynamicAgents: (agents: Agent[]) => void
+  isDynamicAgentsLoading: boolean
+  setIsDynamicAgentsLoading: (isLoading: boolean) => void
+  agentBuilderMode: boolean
+  setAgentBuilderMode: (mode: boolean) => void
 }
 
 export const usePlaygroundStore = create<PlaygroundStore>()(
@@ -103,7 +112,7 @@ export const usePlaygroundStore = create<PlaygroundStore>()(
       hasStorage: false,
       setHasStorage: (hasStorage) => set(() => ({ hasStorage })),
       chatInputRef: { current: null },
-      selectedEndpoint: 'http://localhost:7777',
+      selectedEndpoint: 'http://localhost:8000',
       setSelectedEndpoint: (selectedEndpoint) =>
         set(() => ({ selectedEndpoint })),
       agents: [],
@@ -114,7 +123,7 @@ export const usePlaygroundStore = create<PlaygroundStore>()(
       setSelectedModel: (selectedModel) => set(() => ({ selectedModel })),
       selectedTeamId: null,
       setSelectedTeamId: (teamId) => set(() => ({ selectedTeamId: teamId })),
-      mode: 'team',
+      mode: 'agent',
       setMode: (mode) => set(() => ({ mode })),
       sessionsData: null,
       setSessionsData: (sessionsData) =>
@@ -126,7 +135,14 @@ export const usePlaygroundStore = create<PlaygroundStore>()(
         })),
       isSessionsLoading: false,
       setIsSessionsLoading: (isSessionsLoading) =>
-        set(() => ({ isSessionsLoading }))
+        set(() => ({ isSessionsLoading })),
+      dynamicAgents: [],
+      setDynamicAgents: (agents) => set({ dynamicAgents: agents }),
+      isDynamicAgentsLoading: false,
+      setIsDynamicAgentsLoading: (isLoading) =>
+        set(() => ({ isDynamicAgentsLoading: isLoading })),
+      agentBuilderMode: false,
+      setAgentBuilderMode: (mode) => set(() => ({ agentBuilderMode: mode }))
     }),
     {
       name: 'endpoint-storage',
